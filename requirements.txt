@@ -1,0 +1,6 @@
+# HuoCatDesk 运行依赖（仅此一项）
+# tkinter、ctypes、socket、hashlib、hmac、struct、json、zlib 均为 Python 标准库
+Pillow>=10.0.0
+
+# 可选（仅打包时需要）：
+# pyinstaller>=6.0

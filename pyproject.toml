@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "huocatdesk"
+version = "0.1.0"
+description = "纯 P2P（无中转服务器）远程桌面：邀请码直连、UDP 打洞、加密通道、屏幕流、键鼠控制、文件传输"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "huocatdesk" }]
+dependencies = ["Pillow>=10.0.0"]
+
+[project.scripts]
+huocatdesk = "huocatdesk.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+huocatdesk = ["py.typed"]
