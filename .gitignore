@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+*.egg
+
+# HuoCatDesk build / packaging artifacts
+build/
+dist/
+*.spec.bak
+
+# Local-only reference & scratch (not part of source)
+.rfcs/
+.tmp/
+vendor/
+
+# Test / type caches
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Editable install markers
+*.pth
+
+# OS
+Thumbs.db
+.DS_Store
