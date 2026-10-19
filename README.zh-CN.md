@@ -106,3 +106,14 @@ cd android
 - 会话密钥由 X25519 ECDH 派生，HKDF-SHA256 扩展，ChaCha20-Poly1305 AEAD 加密所有帧。
 - 每帧独立随机 nonce（96 位），AEAD 提供机密性 + 完整性 + 认证。
 - 邀请码含 CRC16 校验，携带公钥指纹——输入错误码不会建立会话。
+
+## 贡献者
+
+本项目由 AI 协作开发：
+
+- **Claude**（Anthropic）
+- **ChatGPT**（OpenAI）
+- **DeepSeek**
+- **Gemini**（Google）
+
+欢迎人类贡献者参与 —— 见 `CONTRIBUTING.md`。

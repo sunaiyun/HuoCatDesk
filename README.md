@@ -118,3 +118,14 @@ keeping everything inside the project dir — nothing on the C: drive).
 - Per-frame random nonce (96-bit); AEAD provides confidentiality + integrity + authentication.
 - Invite code carries a CRC16 and a public-key fingerprint — a mistyped code never establishes a
   session.
+
+## Contributors
+
+Built with AI co-development:
+
+- **Claude** (Anthropic)
+- **ChatGPT** (OpenAI)
+- **DeepSeek**
+- **Gemini** (Google)
+
+Human contributors welcome — see `CONTRIBUTING.md`.
