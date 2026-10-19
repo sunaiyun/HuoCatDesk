@@ -1,106 +1,120 @@
-# HuoCatDesk — 纯 P2P 远程桌面（无中转服务器）
+# HuoCatDesk — Pure-P2P Remote Desktop (no relay server)
 
-两台机器之间不经过任何中转/转发服务器即可建立加密的远程控制通道：屏幕画面、键鼠
-控制、文件传输。仅依赖 **Pillow** + Python 标准库（tkinter/ctypes/socket/hashlib），
-密码学层为纯 Python 参考实现（X25519/HKDF/ChaCha20-Poly1305），已被 RFC 官方向量
-逐条验证（见 `tests/test_crypto.py`）。
+[English](./README.md) | [简体中文](./README.zh-CN.md)
 
-## 工作原理
+Establish an encrypted remote-control channel between two machines with **no relay/forwarding
+server** in between: screen streaming, keyboard/mouse control, and file transfer. Depends only on
+**Pillow** + the Python standard library (tkinter/ctypes/socket/hashlib). The crypto layer is a
+pure-Python reference implementation (X25519/HKDF/ChaCha20-Poly1305), verified against official RFC
+test vectors (see `tests/test_crypto.py`).
+
+## How it works
 
 ```
-被控端(host)                          控制端(join)
-   │ STUN 探测公网地址                    │ STUN 探测公网地址
-   │ 生成邀请码 = base32(公钥+公网地址)   │
-   │ ────── 邀请码带外发给对方 ──────►    │
-   │                                     │ parse_invite → 对端公钥+公网地址
-   │ ◄──── 双向 UDP 打洞(HELLO) ────►    │
-   │ X25519 + HKDF 协商会话密钥           │
-   │ ChaCha20-Poly1305 加密通道           │
-   │ ◄──── 屏幕帧(JPEG) ──────────────   │ 渲染
-   │   键鼠事件 ─────────────────────►    │ 采集并转发
-   │   文件分块 ─────────────────────►    │
+Host (controlled)                    Controller (join)
+   │ STUN: discover public address     │ STUN: discover public address
+   │ invite = base32(pubkey + pub addr) │
+   │ ────── invite sent out-of-band ──► │
+   │                                    │ parse_invite → peer pubkey + addr
+   │ ◄── bidirectional UDP hole- ─────► │
+   │      punching (HELLO)             │
+   │ X25519 + HKDF → session key        │
+   │ ChaCha20-Poly1305 encrypted link   │
+   │ ◄──── screen frames (JPEG) ──────  │ render
+   │   key/mouse events ──────────────► │ capture & forward
+   │   file chunks ──────────────────►  │
 ```
 
-邀请码是双方交换公网地址与公钥的唯一带外凭证（电话/聊天软件口述），全程无服务器。
+The invite code is the sole out-of-band credential exchanging public address + public key
+(dictate it over phone/chat). No server is ever involved.
 
-## 安装
+## Install
 
 ```bash
-pip install -r requirements.txt      # 仅 Pillow
-pip install -e .                     # 可选：安装为命令 HuoCatDesk
+pip install -r requirements.txt      # only Pillow
+pip install -e .                      # optional: install as the `HuoCatDesk` command
 ```
 
-## 使用
+## Usage
 
 ```bash
-# GUI（推荐）
+# GUI (recommended)
 python -m huocatdesk
-# 或
-HuoCatDesk                          # 安装后
+# or
+HuoCatDesk                          # after install
 
-# 被控端（打印邀请码后等待）
+# Host (print invite code, then wait)
 python -m huocatdesk host
 
-# 控制端（输入邀请码直连）
-python -m huocatdesk join "<邀请码>"
+# Controller (enter invite code to connect directly)
+python -m huocatdesk join "<invite-code>"
 ```
 
-GUI 操作：
-1. 双方都启动程序。
-2. 被控方选「被控」→ 开始 → 把邀请码发给控制方。
-3. 控制方选「控制」→ 粘贴邀请码 → 开始。
-4. 连上后被控方屏幕显示在控制方窗口，鼠标键盘直接控制；点「发送文件」互传。
+GUI flow:
+1. Both sides launch the app.
+2. Host picks "Host" → Start → sends the invite code to the controller.
+3. Controller picks "Control" → pastes the invite code → Start.
+4. Once connected, the host's screen appears in the controller's window; drive it with mouse &
+   keyboard. Click "Send file" to transfer files either way.
 
-## 打包成单文件可执行
+## Build a single-file executable
 
 ```bash
-python build.py        # 产物 dist/huocatdesk(.exe)，用 PyInstaller
+python build.py        # produces dist/huocatdesk(.exe) via PyInstaller
 ```
 
-## NAT 兼容性
+## NAT compatibility
 
-- **锥形 NAT**（full-cone / restricted-cone / port-restricted-cone）：打洞成功。
-- **对称 NAT**：通常打洞失败（端口随机）。两端中只要有一方是锥形 NAT 即可成功；
-  双方皆对称 NAT 需另部署 TURN 中转（本项目坚持无中转，故该情形不支持）。
+- **Cone NAT** (full-cone / restricted-cone / port-restricted-cone): hole punching succeeds.
+- **Symmetric NAT**: usually fails (random ports). Succeeds as long as one side is cone NAT;
+  if both are symmetric, a TURN relay would be required (this project deliberately stays
+  relay-free, so that case is unsupported).
 
-## 模块
+## Modules
 
-| 模块 | 职责 |
-|------|------|
-| `crypto` | X25519 + HKDF + ChaCha20-Poly1305（纯 Python，RFC 验证） |
-| `protocol` | UDP 分帧 + 消息类型 |
-| `stun` | RFC 5389 STUN 客户端 + NAT 端口保活 |
-| `p2p` | 邀请码编码 + UDP 打洞握手 + 加密通道 |
-| `screen` | 屏幕采集 + JPEG 编码（Pillow） |
-| `control` | 键鼠执行（Windows SendInput / ctypes） |
-| `filexfer` | 文件分块流式传输 + SHA256 校验 |
-| `session` | 被控/控制会话编排 |
-| `gui` | tkinter 图形界面 |
-| `cli` | 命令行入口 |
+| Module | Responsibility |
+|--------|----------------|
+| `crypto` | X25519 + HKDF + ChaCha20-Poly1305 (pure Python, RFC-verified) |
+| `protocol` | UDP framing + message types |
+| `stun` | RFC 5389 STUN client + NAT keepalive |
+| `p2p` | Invite-code encoding + UDP hole-punching handshake + encrypted channel |
+| `screen` | Screen capture + JPEG encoding (Pillow) |
+| `control` | Keyboard/mouse execution (Windows SendInput / ctypes) |
+| `filexfer` | Chunked file streaming + SHA256 verification |
+| `session` | Host/controller session orchestration |
+| `gui` | tkinter GUI |
+| `cli` | Command-line entry point |
 
-## 移动端
+## Mobile
 
-移动端架构设计与协议契约见 `mobile/`。移动端按同一协议契约实现即可与本桌面端互通。
+Mobile architecture design and the protocol contract are in `mobile/`. Any client implementing
+that contract interoperates with the desktop end.
 
-## Android 客户端
+## Android client
 
-`android/` 是纯 Kotlin 安卓控制端（与桌面端逐字节互通），已实测编译出可安装 APK：
+`android/` is a pure-Kotlin Android controller (byte-for-byte interoperable with the desktop end);
+a buildable APK has been produced and verified:
 
-- 加密层纯 Kotlin 移植（X25519/HKDF/ChaCha20-Poly1305），不依赖系统版本，对 RFC 官方向量回归 7/7 全过（`app/src/test/.../CryptoTest.kt`）。
-- 功能：输入桌面邀请码 → UDP 打洞直连 → 渲染对方屏幕（JPEG）→ 触控操作 → 发文件。
-- minSdk 17（Android 4.2+），targetSdk 34，无 AndroidX 依赖。
+- Crypto is a pure-Kotlin port (X25519/HKDF/ChaCha20-Poly1305), independent of the OS version,
+  passing 7/7 RFC vector regression tests (`app/src/test/.../CryptoTest.kt`).
+- Features: enter the desktop invite code → UDP hole-punch connect → render peer screen (JPEG)
+  → touch control → send files.
+- minSdk 17 (Android 4.2+), targetSdk 34, no AndroidX dependency.
 
-在装好 Android SDK + JDK 17 的机器上：
+On a machine with the Android SDK + JDK 17:
 
 ```bash
 cd android
-./gradlew assembleDebug     # 产物 app/build/outputs/apk/debug/app-debug.apk
+./gradlew assembleDebug     # produces app/build/outputs/apk/debug/app-debug.apk
 ```
 
-或用项目根的 `build_apk.ps1`（自动下载 cmdline-tools + Gradle 并编译，全程落在项目目录、不污染 C 盘）。
+Or use `build_apk.ps1` at the project root (auto-downloads cmdline-tools + Gradle and builds,
+keeping everything inside the project dir — nothing on the C: drive).
 
-## 安全
+## Security
 
-- 会话密钥由 X25519 ECDH 派生，HKDF-SHA256 扩展，ChaCha20-Poly1305 AEAD 加密所有帧。
-- 每帧独立随机 nonce（96 位），AEAD 提供机密性 + 完整性 + 认证。
-- 邀请码含 CRC16 校验，携带公钥指纹——输入错误码不会建立会话。
+- Session key derived via X25519 ECDH, expanded with HKDF-SHA256; all frames sealed with
+  ChaCha20-Poly1305 AEAD.
+- Per-frame random nonce (96-bit); AEAD provides confidentiality + integrity + authentication.
+- Invite code carries a CRC16 and a public-key fingerprint — a mistyped code never establishes a
+  session.
