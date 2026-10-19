@@ -121,11 +121,6 @@ keeping everything inside the project dir — nothing on the C: drive).
 
 ## Contributors
 
-Built with AI co-development:
-
-- **Claude** (Anthropic)
-- **ChatGPT** (OpenAI)
-- **DeepSeek**
-- **Gemini** (Google)
+Co-developed with **Claude** (Anthropic).
 
 Human contributors welcome — see `CONTRIBUTING.md`.

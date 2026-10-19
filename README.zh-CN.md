@@ -109,11 +109,6 @@ cd android
 
 ## 贡献者
 
-本项目由 AI 协作开发：
-
-- **Claude**（Anthropic）
-- **ChatGPT**（OpenAI）
-- **DeepSeek**
-- **Gemini**（Google）
+本项目与 **Claude**（Anthropic）协作开发。
 
 欢迎人类贡献者参与 —— 见 `CONTRIBUTING.md`。
