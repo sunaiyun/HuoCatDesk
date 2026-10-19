@@ -82,6 +82,23 @@ python build.py        # 产物 dist/huocatdesk(.exe)，用 PyInstaller
 
 移动端架构设计与协议契约见 `mobile/`。移动端按同一协议契约实现即可与本桌面端互通。
 
+## Android 客户端
+
+`android/` 是纯 Kotlin 安卓控制端（与桌面端逐字节互通），已实测编译出可安装 APK：
+
+- 加密层纯 Kotlin 移植（X25519/HKDF/ChaCha20-Poly1305），不依赖系统版本，对 RFC 官方向量回归 7/7 全过（`app/src/test/.../CryptoTest.kt`）。
+- 功能：输入桌面邀请码 → UDP 打洞直连 → 渲染对方屏幕（JPEG）→ 触控操作 → 发文件。
+- minSdk 17（Android 4.2+），targetSdk 34，无 AndroidX 依赖。
+
+在装好 Android SDK + JDK 17 的机器上：
+
+```bash
+cd android
+./gradlew assembleDebug     # 产物 app/build/outputs/apk/debug/app-debug.apk
+```
+
+或用项目根的 `build_apk.ps1`（自动下载 cmdline-tools + Gradle 并编译，全程落在项目目录、不污染 C 盘）。
+
 ## 安全
 
 - 会话密钥由 X25519 ECDH 派生，HKDF-SHA256 扩展，ChaCha20-Poly1305 AEAD 加密所有帧。

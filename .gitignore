@@ -25,6 +25,14 @@ htmlcov/
 # Editable install markers
 *.pth
 
+# Android
+android/local.properties
+android/.gradle/
+android/build/
+android/app/build/
+.android/
+.android_sdk/
+
 # OS
 Thumbs.db
 .DS_Store
