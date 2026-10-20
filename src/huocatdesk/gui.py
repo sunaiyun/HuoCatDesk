@@ -25,6 +25,7 @@ class App:
         self.root.geometry("900x620")
         self.ses = None
         self._frame_q: queue.Queue = queue.Queue()
+        self._ui_q: queue.Queue = queue.Queue()
         self._photo = None
         self._btn = 0  # 当前鼠标按键状态位掩码
         self._build()
@@ -96,16 +97,18 @@ class App:
         self._btn_stop.config(state=tk.NORMAL)
         self.ses = session.HostSession(
             on_invite=self._show_invite,
-            on_status=self._status.set,
-            on_connected=lambda: self._status.set("已连接：正在推送屏幕。"),
+            on_status=self._set_status,
+            on_connected=lambda: self._set_status("已连接：正在推送屏幕。"),
             on_file=self._on_file_done,
         )
-        try:
-            self.ses.start()
-        except Exception as e:
-            self._status.set(f"错误：{e}")
-            self._btn_run.config(state=tk.NORMAL)
-            self._btn_stop.config(state=tk.DISABLED)
+        import threading
+        def _do():
+            try:
+                self.ses.start()
+            except Exception as e:
+                self._ui_q.put(("status", f"错误：{e}"))
+                self._ui_q.put(("enable_run",))
+        threading.Thread(target=_do, daemon=True).start()
 
     def _run_join(self):
         code = self._code_entry.get("1.0", tk.END).strip()
@@ -116,18 +119,18 @@ class App:
         self._btn_stop.config(state=tk.NORMAL)
         self.ses = session.JoinSession(
             on_frame=lambda w, h, jpg: self._frame_q.put((w, h, jpg)),
-            on_status=self._status.set,
-            on_connected=lambda: self._status.set("已连接：接收屏幕中。"),
+            on_status=self._set_status,
+            on_connected=lambda: self._set_status("已连接：接收屏幕中。"),
             on_file=self._on_file_done,
         )
-        threading_wrap = __import__("threading")
+        import threading
         def _do():
             try:
                 self.ses.connect(code)
             except Exception as e:
-                self.root.after(0, lambda: self._status.set(f"连接失败：{e}"))
-                self.root.after(0, lambda: self._btn_run.config(state=tk.NORMAL))
-        threading_wrap.Thread(target=_do, daemon=True).start()
+                self._ui_q.put(("status", f"连接失败：{e}"))
+                self._ui_q.put(("enable_run",))
+        threading.Thread(target=_do, daemon=True).start()
 
     def _stop(self):
         if self.ses:
@@ -138,8 +141,12 @@ class App:
         self._status.set("已停止。")
 
     # ---- 回调 ----
+    def _set_status(self, s: str):
+        """线程安全：后台线程放队列，主线程 _poll 里更新状态。"""
+        self._ui_q.put(("status", s))
+
     def _show_invite(self, code: str):
-        self.root.after(0, lambda: self._set_invite(code))
+        self._ui_q.put(("invite", code))
 
     def _set_invite(self, code: str):
         self._invite_txt.config(state=tk.NORMAL)
@@ -171,22 +178,37 @@ class App:
         def _do():
             try:
                 self.ses.send_file(path)
-                self.root.after(0, lambda: self._status.set(f"已发送：{path}"))
+                self._ui_q.put(("status", f"已发送：{path}"))
             except Exception as e:
-                self.root.after(0, lambda: self._status.set(f"发送失败：{e}"))
+                self._ui_q.put(("status", f"发送失败：{e}"))
         threading.Thread(target=_do, daemon=True).start()
 
     def _on_file_done(self, path):
-        self.root.after(0, lambda: self._status.set(
-            f"已接收文件：{path}" if path else "文件接收但校验失败"))
+        self._ui_q.put(("file_done", path))
 
-    # ---- 屏幕帧渲染（主线程轮询 queue）----
+    # ---- 屏幕帧渲染 + UI 消息（主线程轮询 queue）----
     def _poll(self):
         try:
             while True:
                 w, h, jpg = self._frame_q.get_nowait()
                 img = Image.open(io.BytesIO(jpg))
                 self._render(img, w, h)
+        except queue.Empty:
+            pass
+        try:
+            while True:
+                msg = self._ui_q.get_nowait()
+                kind = msg[0]
+                if kind == "status":
+                    self._status.set(msg[1])
+                elif kind == "invite":
+                    self._set_invite(msg[1])
+                elif kind == "file_done":
+                    p = msg[1]
+                    self._status.set(f"已接收文件：{p}" if p else "文件接收但校验失败")
+                elif kind == "enable_run":
+                    self._btn_run.config(state=tk.NORMAL)
+                    self._btn_stop.config(state=tk.DISABLED)
         except queue.Empty:
             pass
         self.root.after(40, self._poll)
